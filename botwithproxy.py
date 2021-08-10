@@ -16,11 +16,11 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 print("""
-######   ##    ##   ##   ##         ##                #######     #########   ##########
-#        ##    ##   ##   ##         ##                ##    ##    ##     ##       ## 
-######   ########   ##   ##         ##         ###    ######      ##     ##       ##
-     #   ##    ##   ##   ##         ##                ##    ##    ##     ##       ##
-######   ##    ##   ##   ########   ########          #######     #########       ##
+######   ##   ##   ##   ##   ##        #######   #########  ##########
+#        ##   ##   ##   ##   ##        ##    ##  ##     ##      ##    
+######   #######   ##   ##   ##   ###  ##  ####  ##     ##      ##    
+     #   ##   ##   ##   ##   ##        ##    ##  ##     ##      ##    
+######   ##   ##   ##   #### ####      ########  #########      ##    
 """)
 
 
@@ -44,40 +44,29 @@ sessions = session_file.splitlines()
 #/python -m pip install --upgrade pip' command
 
 print("\n[$]Getting proxies")
-proxy_pool = json.load(open("proxies.txt"))
-ip = None
-port = None
+proxy_pool = json.load(open("proxies"))
 
 
-def rotate_proxy():
- global client, ip, port
- proxy = random.choice(proxy_pool)
- proxy = proxy.split(":")
- client = TelegramClient(StringSession(string), api_id, api_hash, proxy=('socks4', proxy[0], int(proxy[1])), auto_reconnect=False)
- ip = str(proxy[0])
- port = int(proxy[1])
-
-
-async def rotate_proxy_endpoint():
+def create_new_proxy_client(session:StringSession, id, hash):
+    proxy = random.choice(proxy_pool)
+    proxy = proxy.split(":")
     try:
-      rotate_proxy()
-      await client.connect()
-      print("got")
+        client = TelegramClient(session, id, hash, proxy=('socks4', proxy[0], int(proxy[1])), auto_reconnect=False)    
+        asyncio.get_event_loop().run_until_complete(client.connect())
+        return client
     except Exception as e:
-      print("REROTATING")
-      rotate_proxy_endpoint()
+        return create_new_proxy_client(session, id, hash)
 
 for session in sessions: #Running clients with extracted sessions
     global client
     string = str(session)
-    rotate_proxy_endpoint()
-    client = TelegramClient(StringSession(string), api_id, api_hash, proxy=('socks4', ip, port))
+    client = create_new_proxy_client(StringSession(string), api_id, api_hash)
     client.start()
     clients.append(client)
 
 if len(clients) < client_number: #Taking clients as input
     for i in range(client_number - len(clients)):
-        client = TelegramClient(StringSession(), api_id, api_hash, proxy=("socks4", "1.10.140.43", 4145))
+        client = create_new_proxy_client(StringSession(), api_id, api_hash)
         client.start()
         clients.append(client)
         str_session = client.session.save()
