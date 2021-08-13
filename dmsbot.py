@@ -9,7 +9,7 @@ import json
 import os
 from pathlib import Path
 import  logging
-logging.basicConfig(level= "DEBUG")
+logging.basicConfig(level= None)
 
 print("""
 #######     ####    ####     #######  #######     ####    ####    ####      ######    ########  ##########
@@ -51,7 +51,7 @@ with open("string_session.txt") as file:
 sessions = session_file.splitlines()
 
 print("\n[$]Getting proxies")
-proxy_pool = json.load(open("proxies.txt"))
+proxy_pool = json.load(open("proxies"))
 
 
 def create_new_proxy_client(session:StringSession, id, hash): #proxy implimentation
@@ -59,22 +59,21 @@ def create_new_proxy_client(session:StringSession, id, hash): #proxy implimentat
     proxy = proxy.split(":")
     try:
         client = TelegramClient(session, id, hash, proxy=('socks4', proxy[0], int(proxy[1])), auto_reconnect=False)
-        asyncio.get_event_loop().run_until_complete(client.connect())
+        client.connect()
         return client
     except Exception as e:
+        print("retrying: "+str(e))
         return create_new_proxy_client(session, id, hash)
 
 for session in sessions: #Running clients with extracted sessions
     global client
     string = str(session)
     client = create_new_proxy_client(StringSession(string), api_id, api_hash)
-    client.start()
     clients.append(client)
 
 if len(clients) < client_number: #Taking clients as input
     for i in range(client_number - len(clients)):
         client = create_new_proxy_client(StringSession(), api_id, api_hash)
-        client.start()
         clients.append(client)
         str_session = client.session.save()
         with open("string_session.txt", "a") as f:
